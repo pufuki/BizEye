@@ -1,4 +1,4 @@
-# Logs
+# Logs & Reports
 logs
 *.log
 npm-debug.log*
@@ -11,14 +11,14 @@ report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 node_modules/
 jspm_packages/
 
-# Build & Vite outputs
+# Build & Bundler outputs
 dist/
 dist-ssr/
 build/
 .vite/
 *.tsbuildinfo
 
-# Local environment & secret files
+# Local Environment & Secrets
 .env
 .env.local
 .env.development.local
@@ -55,8 +55,10 @@ datasets/
 *.csv
 *.xlsx
 *.parquet
+*.sqlite
+*.db
 
-# Custom & temporary folders
+# Temporary & Scratch folders
 ignoreFolder/
 scratch/
 .tmp/
