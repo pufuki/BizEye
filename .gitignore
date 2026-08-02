@@ -50,6 +50,12 @@ Thumbs.db
 coverage/
 .nyc_output/
 
+# Dataset & Data Files
+datasets/
+*.csv
+*.xlsx
+*.parquet
+
 # Custom & temporary folders
 ignoreFolder/
 scratch/
