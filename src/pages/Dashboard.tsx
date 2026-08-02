@@ -7,24 +7,28 @@ import Overview from '@/components/dashboard/Overview';
 import Performance from '@/components/dashboard/Performance';
 import Sentiment from '@/components/dashboard/Sentiment';
 import Predictive from '@/components/dashboard/Predictive';
+import DataUpload from '@/components/dashboard/DataUpload';
+import { DashboardData } from '@/utils/csvParser';
 
 interface Props {
   userName: string;
   onLogout: () => void;
 }
 
-type Section = 'overview' | 'performance' | 'sentiment' | 'predictive';
+type Section = 'overview' | 'performance' | 'sentiment' | 'predictive' | 'upload';
 
 const NAV: { id: Section; label: string; icon: typeof LayoutDashboard }[] = [
   { id: 'overview', label: 'Overview', icon: LayoutDashboard },
   { id: 'performance', label: 'Performance', icon: BarChart3 },
   { id: 'sentiment', label: 'Sentiment', icon: MessageSquareHeart },
   { id: 'predictive', label: 'Predictive', icon: TrendingUp },
+  { id: 'upload', label: 'Upload Data', icon: Upload },
 ];
 
 export default function Dashboard({ userName, onLogout }: Props) {
-  const [section, setSection] = useState<Section>('overview');
+  const [section, setSection] = useState<Section>('upload');
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
 
   return (
     <div className="min-h-screen bg-[#f7f7f5] text-gray-900 flex">
@@ -44,7 +48,10 @@ export default function Dashboard({ userName, onLogout }: Props) {
 
         {/* Upload CTA */}
         <div className="px-4 py-4">
-          <button className="w-full flex items-center justify-center gap-2 bg-sky-400 text-black font-medium text-sm py-3 rounded-lg hover:bg-sky-300 transition-colors">
+          <button 
+            onClick={() => { setSection('upload'); setSidebarOpen(false); }}
+            className="w-full flex items-center justify-center gap-2 bg-sky-400 text-black font-medium text-sm py-3 rounded-lg hover:bg-sky-300 transition-colors"
+          >
             <Upload className="w-4 h-4" />
             Upload Data
           </button>
@@ -134,6 +141,7 @@ export default function Dashboard({ userName, onLogout }: Props) {
                   {section === 'performance' && 'Product & sales performance analysis'}
                   {section === 'sentiment' && 'Customer sentiment & feedback intelligence'}
                   {section === 'predictive' && 'AI-powered forecasts & predictions'}
+                  {section === 'upload' && 'Upload CSV datasets for analysis'}
                 </p>
               </div>
             </div>
@@ -163,10 +171,11 @@ export default function Dashboard({ userName, onLogout }: Props) {
 
         {/* Section content */}
         <main className="flex-1 p-6 md:p-8 overflow-auto">
-          {section === 'overview' && <Overview onNavigate={setSection} />}
-          {section === 'performance' && <Performance />}
-          {section === 'sentiment' && <Sentiment />}
-          {section === 'predictive' && <Predictive />}
+          {section === 'overview' && <Overview onNavigate={setSection} data={dashboardData} />}
+          {section === 'performance' && <Performance onNavigate={setSection} data={dashboardData} />}
+          {section === 'sentiment' && <Sentiment onNavigate={setSection} data={dashboardData} />}
+          {section === 'predictive' && <Predictive onNavigate={setSection} data={dashboardData} />}
+          {section === 'upload' && <DataUpload onDataLoaded={(d) => { setDashboardData(d); setSection('overview'); }} currentData={dashboardData} />}
         </main>
       </div>
     </div>

@@ -1,155 +1,194 @@
-import { MessageSquareHeart, ThumbsUp, ThumbsDown, Meh, Sparkles } from 'lucide-react';
+import { Sparkles, ThumbsUp, ThumbsDown, Meh, Star } from 'lucide-react';
+import { DashboardData } from '@/utils/csvParser';
+import NoDataBanner from './NoDataBanner';
 
-const SENTIMENT_BREAKDOWN = [
-  { label: 'Positive', value: 62, color: 'bg-emerald-400', icon: ThumbsUp },
-  { label: 'Neutral', value: 26, color: 'bg-gray-300', icon: Meh },
-  { label: 'Negative', value: 12, color: 'bg-red-400', icon: ThumbsDown },
-];
+interface Props {
+  data?: DashboardData | null;
+  onNavigate?: (s: 'overview' | 'performance' | 'sentiment' | 'predictive' | 'upload') => void;
+}
 
-const THEMES = [
-  { theme: 'Product Quality', sentiment: 'positive', score: 78, mentions: 342 },
-  { theme: 'Shipping Speed', sentiment: 'negative', score: 42, mentions: 218 },
-  { theme: 'Customer Service', sentiment: 'positive', score: 85, mentions: 156 },
-  { theme: 'Value for Money', sentiment: 'neutral', score: 60, mentions: 134 },
-  { theme: 'Product Range', sentiment: 'positive', score: 72, mentions: 98 },
-  { theme: 'Returns Process', sentiment: 'negative', score: 38, mentions: 76 },
-];
+export default function Sentiment({ data, onNavigate }: Props) {
+  const sentimentData = data
+    ? [
+        { label: 'Positive (4-5★)', value: data.sentimentBreakdown.positive, icon: ThumbsUp },
+        { label: 'Neutral (3★)', value: data.sentimentBreakdown.neutral, icon: Meh },
+        { label: 'Negative (1-2★)', value: data.sentimentBreakdown.negative, icon: ThumbsDown },
+      ]
+    : [];
 
-const REVIEWS = [
-  { text: 'The Summer Cotton Tee is incredibly soft and fits perfectly. Will buy again!', sentiment: 'positive', source: 'Verified Purchase', product: 'Summer Cotton Tee' },
-  { text: 'Shipping took 2 weeks when it said 3 days. Product is fine but the wait was frustrating.', sentiment: 'negative', source: 'Verified Purchase', product: 'Organic Hoodie' },
-  { text: 'Good quality for the price. Nothing amazing but does the job.', sentiment: 'neutral', source: 'Verified Purchase', product: 'Linen Shirt' },
-  { text: 'Customer service helped me exchange sizes with no hassle. Very impressed!', sentiment: 'positive', source: 'Support Ticket', product: 'Denim Jacket' },
-  { text: 'The return process was confusing and I had to email 3 times to get a refund.', sentiment: 'negative', source: 'Support Ticket', product: 'Phone Case V2' },
-];
+  const themes = data
+    ? data.ratingByCategory.map((r) => ({
+        name: r.name,
+        score: r.score,
+        mentions: r.count,
+      }))
+    : [];
 
-export default function Sentiment() {
+  const reviews = data
+    ? data.recentReviews.map((r) => ({
+        text: r.text,
+        product: r.productName,
+        rating: r.rating,
+        date: r.date,
+        sentiment: r.sentiment,
+      }))
+    : [];
+
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Overall sentiment */}
-      <div className="grid lg:grid-cols-3 gap-6">
-        <div className="bg-gradient-to-br from-[#0a0a0a] to-[#1a1a1a] rounded-2xl p-6 text-white relative overflow-hidden">
-          <div className="absolute right-0 top-0 w-40 h-40 bg-sky-400/10 rounded-full blur-[60px]" />
-          <div className="relative">
-            <div className="flex items-center gap-2 mb-4">
-              <Sparkles className="w-4 h-4 text-sky-400" />
-              <span className="text-xs text-sky-400 uppercase tracking-widest">AI Analysis</span>
-            </div>
-            <p className="text-sm text-gray-300 leading-relaxed mb-4">
-              Overall sentiment is <span className="text-emerald-400 font-medium">positive</span> but shipping complaints are rising. Address logistics to prevent a dip in satisfaction.
-            </p>
-            <div className="flex items-center gap-2 text-xs text-gray-500">
-              <MessageSquareHeart className="w-3.5 h-3.5" />
-              Analyzed 1,024 reviews & tickets
-            </div>
+      {/* AI Analysis Card */}
+      <div className="bg-gradient-to-r from-[#0a0a0a] to-[#1a1a1a] rounded-2xl p-6 text-white relative overflow-hidden">
+        <div className="absolute right-0 top-0 w-64 h-64 bg-sky-400/10 rounded-full blur-[80px]" />
+        <div className="relative flex items-start gap-4">
+          <div className="w-10 h-10 bg-sky-400/20 border border-sky-400/30 rounded-lg flex items-center justify-center shrink-0">
+            <Sparkles className="w-5 h-5 text-sky-400" />
+          </div>
+          <div className="flex-1">
+            <p className="text-xs text-sky-400 uppercase tracking-widest mb-1">Sentiment Intelligence</p>
+            {data ? (
+              <>
+                <h2 className="text-lg font-semibold mb-2">Customer Feedback Analysis</h2>
+                <p className="text-gray-400 text-sm leading-relaxed max-w-3xl">
+                  Analyzed {data.totalOrders.toLocaleString()} customer ratings across {data.categories.length} categories. Overall average customer satisfaction score is {data.avgRating.toFixed(1)} / 5.0 stars.
+                </p>
+              </>
+            ) : (
+              <>
+                <h2 className="text-lg font-semibold mb-2">No Customer Reviews Loaded</h2>
+                <p className="text-gray-400 text-sm leading-relaxed max-w-3xl">
+                  Upload a CSV dataset with customer ratings and review texts to analyze sentiment distribution and category satisfaction scores.
+                </p>
+              </>
+            )}
           </div>
         </div>
+      </div>
 
-        <div className="lg:col-span-2 bg-white rounded-xl p-6 border border-gray-200/60">
-          <h3 className="font-semibold text-gray-900 mb-1">Sentiment Breakdown</h3>
-          <p className="text-xs text-gray-500 mb-6">Last 30 days across all channels</p>
-          <div className="grid grid-cols-3 gap-4">
-            {SENTIMENT_BREAKDOWN.map((s) => (
-              <div key={s.label} className="text-center">
-                <div className="relative w-24 h-24 mx-auto mb-3">
-                  <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
-                    <circle cx="50" cy="50" r="40" fill="none" stroke="#f3f4f6" strokeWidth="8" />
+      {!data ? (
+        <NoDataBanner
+          title="No Sentiment Data Available"
+          desc="Upload a CSV dataset to view review sentiment breakdown, category satisfaction ratings, and customer feedback."
+          onUploadClick={onNavigate ? () => onNavigate('upload') : undefined}
+        />
+      ) : (
+        <>
+          <div className="grid lg:grid-cols-3 gap-6">
+            {/* Donut Sentiment Breakdown */}
+            <div className="bg-white rounded-xl p-6 border border-gray-200/60 flex flex-col justify-between">
+              <div>
+                <h3 className="font-semibold text-gray-900 mb-1">Overall Sentiment</h3>
+                <p className="text-xs text-gray-500 mb-6">Based on dataset star ratings</p>
+              </div>
+
+              {/* Circular percentage display */}
+              <div className="flex justify-center my-4">
+                <div className="relative w-40 h-40 flex items-center justify-center">
+                  <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+                    <circle cx="50" cy="50" r="40" stroke="#f3f4f6" strokeWidth="12" fill="none" />
                     <circle
-                      cx="50" cy="50" r="40" fill="none"
-                      stroke={s.label === 'Positive' ? '#34d399' : s.label === 'Neutral' ? '#d1d5db' : '#f87171'}
-                      strokeWidth="8"
-                      strokeDasharray={`${s.value * 2.51} 251`}
+                      cx="50"
+                      cy="50"
+                      r="40"
+                      stroke="#10b981"
+                      strokeWidth="12"
+                      fill="none"
+                      strokeDasharray={`${(data.sentimentBreakdown.positive * 2.51).toFixed(0)} 251`}
                       strokeLinecap="round"
                     />
                   </svg>
-                  <div className="absolute inset-0 flex flex-col items-center justify-center">
-                    <s.icon className={`w-4 h-4 mb-1 ${s.label === 'Positive' ? 'text-emerald-500' : s.label === 'Neutral' ? 'text-gray-400' : 'text-red-400'}`} />
-                    <span className="text-lg font-bold text-gray-900">{s.value}%</span>
+                  <div className="absolute flex flex-col items-center">
+                    <span className="text-2xl font-bold text-gray-900">{data.sentimentBreakdown.positive}%</span>
+                    <span className="text-[10px] text-gray-400 uppercase tracking-widest font-medium">Positive</span>
                   </div>
                 </div>
-                <p className="text-xs text-gray-500">{s.label}</p>
               </div>
-            ))}
+
+              {/* Legend */}
+              <div className="grid grid-cols-3 gap-2 pt-4 border-t border-gray-100 text-center">
+                {sentimentData.map((s) => (
+                  <div key={s.label} className="p-2 rounded-lg bg-gray-50">
+                    <s.icon
+                      className={`w-4 h-4 mx-auto mb-1 ${
+                        s.label.includes('Positive')
+                          ? 'text-emerald-500'
+                          : s.label.includes('Neutral')
+                          ? 'text-gray-400'
+                          : 'text-red-400'
+                      }`}
+                    />
+                    <p className="text-xs font-bold text-gray-900">{s.value}%</p>
+                    <p className="text-[10px] text-gray-400 truncate">{s.label.split(' ')[0]}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Category Satisfaction Scores */}
+            <div className="lg:col-span-2 bg-white rounded-xl p-6 border border-gray-200/60">
+              <h3 className="font-semibold text-gray-900 mb-1">Satisfaction by Category</h3>
+              <p className="text-xs text-gray-500 mb-6">Star rating score converted to 0–100 index</p>
+              <div className="space-y-4">
+                {themes.map((t) => (
+                  <div key={t.name}>
+                    <div className="flex justify-between items-center text-sm mb-1.5">
+                      <span className="text-gray-700 font-medium">{t.name}</span>
+                      <span className="text-xs text-gray-500">
+                        {t.score}/100 <span className="text-gray-400 font-normal">({t.mentions} reviews)</span>
+                      </span>
+                    </div>
+                    <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full ${
+                          t.score >= 75 ? 'bg-emerald-500' : t.score >= 50 ? 'bg-sky-400' : 'bg-amber-400'
+                        }`}
+                        style={{ width: `${t.score}%` }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
 
-      {/* Sentiment by theme */}
-      <div className="bg-white rounded-xl p-6 border border-gray-200/60">
-        <h3 className="font-semibold text-gray-900 mb-1">Sentiment by Theme</h3>
-        <p className="text-xs text-gray-500 mb-6">AI-extracted topics from customer feedback</p>
-        <div className="space-y-4">
-          {THEMES.map((t) => (
-            <div key={t.theme} className="flex items-center gap-4">
-              <div className="w-40 shrink-0">
-                <p className="text-sm text-gray-700">{t.theme}</p>
-                <p className="text-xs text-gray-400">{t.mentions} mentions</p>
-              </div>
-              <div className="flex-1">
-                <div className="h-2 bg-gray-100 rounded-full overflow-hidden relative">
-                  <div
-                    className={`h-full rounded-full ${
-                      t.sentiment === 'positive' ? 'bg-emerald-400'
-                      : t.sentiment === 'negative' ? 'bg-red-400' : 'bg-gray-300'
-                    }`}
-                    style={{ width: `${t.score}%` }}
-                  />
-                </div>
-              </div>
-              <div className="w-16 text-right">
-                <span className={`text-xs font-medium ${
-                  t.sentiment === 'positive' ? 'text-emerald-600'
-                  : t.sentiment === 'negative' ? 'text-red-500' : 'text-gray-500'
-                }`}>
-                  {t.score}/100
-                </span>
-              </div>
-              <div className="w-24 text-right">
-                <span className={`text-xs px-2 py-0.5 rounded-full ${
-                  t.sentiment === 'positive' ? 'bg-emerald-50 text-emerald-700'
-                  : t.sentiment === 'negative' ? 'bg-red-50 text-red-600' : 'bg-gray-100 text-gray-600'
-                }`}>
-                  {t.sentiment}
-                </span>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Recent reviews */}
-      <div>
-        <h3 className="font-semibold text-gray-900 mb-4">Recent Customer Feedback</h3>
-        <div className="grid md:grid-cols-2 gap-4">
-          {REVIEWS.map((r, i) => (
-            <div key={i} className="bg-white rounded-xl p-5 border border-gray-200/60">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                    r.sentiment === 'positive' ? 'bg-emerald-50'
-                    : r.sentiment === 'negative' ? 'bg-red-50' : 'bg-gray-100'
-                  }`}>
-                    {r.sentiment === 'positive' ? <ThumbsUp className="w-4 h-4 text-emerald-600" />
-                    : r.sentiment === 'negative' ? <ThumbsDown className="w-4 h-4 text-red-500" />
-                    : <Meh className="w-4 h-4 text-gray-500" />}
+          {/* Customer Reviews List */}
+          <div className="bg-white rounded-xl p-6 border border-gray-200/60">
+            <h3 className="font-semibold text-gray-900 mb-1">Customer Reviews & Feedback</h3>
+            <p className="text-xs text-gray-500 mb-6">Recent customer reviews from uploaded dataset</p>
+            <div className="grid md:grid-cols-2 gap-4">
+              {reviews.map((r, i) => (
+                <div key={i} className="p-4 border border-gray-100 rounded-xl bg-gray-50/50 flex flex-col justify-between space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold text-gray-900 truncate max-w-[180px]">{r.product}</span>
+                    <div className="flex items-center gap-1">
+                      {[...Array(5)].map((_, idx) => (
+                        <Star
+                          key={idx}
+                          className={`w-3 h-3 ${idx < r.rating ? 'text-amber-400 fill-amber-400' : 'text-gray-200'}`}
+                        />
+                      ))}
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-xs text-gray-500">{r.source}</p>
-                    <p className="text-xs text-gray-400">{r.product}</p>
+                  <p className="text-xs text-gray-600 leading-relaxed italic">"{r.text}"</p>
+                  <div className="flex items-center justify-between pt-2 border-t border-gray-200/40 text-[10px] text-gray-400">
+                    <span>{r.date}</span>
+                    <span
+                      className={`px-2 py-0.5 rounded-full font-medium ${
+                        r.sentiment === 'positive'
+                          ? 'bg-emerald-100 text-emerald-700'
+                          : r.sentiment === 'neutral'
+                          ? 'bg-gray-200 text-gray-700'
+                          : 'bg-red-100 text-red-700'
+                      }`}
+                    >
+                      {r.sentiment}
+                    </span>
                   </div>
                 </div>
-                <span className={`text-xs px-2 py-0.5 rounded-full ${
-                  r.sentiment === 'positive' ? 'bg-emerald-50 text-emerald-700'
-                  : r.sentiment === 'negative' ? 'bg-red-50 text-red-600' : 'bg-gray-100 text-gray-600'
-                }`}>
-                  {r.sentiment}
-                </span>
-              </div>
-              <p className="text-sm text-gray-700 leading-relaxed">"{r.text}"</p>
+              ))}
             </div>
-          ))}
-        </div>
-      </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
