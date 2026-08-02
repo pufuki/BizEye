@@ -1,5 +1,6 @@
 import { ArrowRight, BarChart3, Brain, TrendingUp, Eye } from 'lucide-react';
 import Doodles from '@/components/Doodles';
+import CountUpStat from '@/components/CountUpStat';
 
 interface Props {
   onGetStarted: () => void;
@@ -62,11 +63,6 @@ export default function Landing({ onGetStarted }: Props) {
 
       {/* Hero */}
       <section className="relative z-10 px-8 md:px-16 pt-20 pb-32">
-        {/* Side label */}
-        <div className="hidden lg:flex absolute left-6 top-1/2 -translate-y-1/2 -rotate-90 origin-center">
-          <span className="text-xs tracking-[0.3em] text-gray-600 uppercase">Homepage</span>
-        </div>
-
         <div className="max-w-5xl">
           <div className="opacity-0 animate-slide-up">
             <p className="text-xs tracking-[0.3em] text-sky-400 uppercase mb-6 font-medium">
@@ -137,10 +133,7 @@ export default function Landing({ onGetStarted }: Props) {
             { value: '85%+', label: 'Forecast Accuracy' },
             { value: '3', label: 'Intelligence Pillars' },
           ].map((stat) => (
-            <div key={stat.label} className="px-8 py-10 text-center">
-              <p className="text-3xl md:text-4xl font-bold text-sky-400 mb-1">{stat.value}</p>
-              <p className="text-xs text-gray-500 tracking-wide uppercase">{stat.label}</p>
-            </div>
+            <CountUpStat key={stat.label} value={stat.value} label={stat.label} />
           ))}
         </div>
       </section>
