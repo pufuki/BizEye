@@ -1,0 +1,43 @@
+# ==========================================
+# SERVER SECURITY & SECRETS PROTECTION
+# ==========================================
+
+# Environment Secrets
+.env
+.env.*
+*.env
+.env.local
+
+# Keys & Certificates
+*.pem
+*.key
+*.crt
+
+# Service Account & Cloud Credentials
+service-account*.json
+client_secret*.json
+
+# Python Bytecode & Environments
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.venv/
+env/
+
+# Databases & File Uploads
+*.db
+*.sqlite
+*.sqlite3
+uploads/
+
+# Dependency directories
+node_modules/
+
+# Logs
+logs/
+*.log
+
+# OS Metadata
+.DS_Store
+Thumbs.db
