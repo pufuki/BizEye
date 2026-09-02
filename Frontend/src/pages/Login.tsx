@@ -4,7 +4,7 @@ import Doodles from '@/components/Doodles';
 import { UserInfo } from '@/App';
 
 interface Props {
-  onLogin: (user: UserInfo) => void;
+  onLogin: (user: UserInfo, token?: string) => void;
   onBack: () => void;
 }
 
@@ -32,7 +32,7 @@ export default function Login({ onLogin, onBack }: Props) {
         return;
       }
       if (!email.trim() || !emailRegex.test(email.trim())) {
-        setError('Please enter a valid email address (e.g. name@company.com)');
+        setError('Please enter a valid email address');
         return;
       }
       if (password.length < 4) {
@@ -94,14 +94,7 @@ export default function Login({ onLogin, onBack }: Props) {
           return;
         }
 
-        const userDisplayName = resData.user?.username || name || email.split('@')[0];
-        const userEmail = resData.user?.email || email;
-        onLogin({
-          username: userDisplayName.charAt(0).toUpperCase() + userDisplayName.slice(1),
-          email: userEmail,
-          role: 'Business Owner',
-          company: 'D2C Retail Store',
-        });
+        onLogin(resData.user, resData.token);
       } catch (err) {
         setError('Authentication server error. Please ensure the backend server is running.');
       } finally {
@@ -139,14 +132,7 @@ export default function Login({ onLogin, onBack }: Props) {
 
       setSuccessMsg('Account verified successfully! Logging you in...');
       setTimeout(() => {
-        const userDisplayName = resData.user?.username || name || email.split('@')[0];
-        const userEmail = resData.user?.email || email;
-        onLogin({
-          username: userDisplayName.charAt(0).toUpperCase() + userDisplayName.slice(1),
-          email: userEmail,
-          role: 'Business Owner',
-          company: 'D2C Retail Store',
-        });
+        onLogin(resData.user, resData.token);
       }, 1000);
     } catch (err) {
       setError('Verification error. Please ensure the backend server is running.');
@@ -278,7 +264,7 @@ export default function Login({ onLogin, onBack }: Props) {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="group w-full flex items-center justify-center gap-3 bg-sky-400 text-black font-semibold py-4 rounded-xl hover:bg-sky-300 transition-all duration-300 disabled:opacity-60"
+                  className="group w-full flex items-center justify-center gap-3 bg-sky-400 text-black font-semibold py-4 rounded-xl hover:bg-sky-300 transition-all duration-300 disabled:opacity-60 cursor-pointer"
                 >
                   {loading ? (
                     <div className="w-5 h-5 border-2 border-black/30 border-t-black rounded-full animate-spin" />
@@ -428,7 +414,7 @@ export default function Login({ onLogin, onBack }: Props) {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="group w-full flex items-center justify-center gap-3 bg-sky-400 text-black font-semibold py-4 rounded-xl hover:bg-sky-300 transition-all duration-300 disabled:opacity-60"
+                  className="group w-full flex items-center justify-center gap-3 bg-sky-400 text-black font-semibold py-4 rounded-xl hover:bg-sky-300 transition-all duration-300 disabled:opacity-60 cursor-pointer"
                 >
                   {loading ? (
                     <div className="w-5 h-5 border-2 border-black/30 border-t-black rounded-full animate-spin" />
@@ -450,7 +436,7 @@ export default function Login({ onLogin, onBack }: Props) {
                     setMode(mode === 'signin' ? 'signup' : 'signin');
                     setError('');
                   }}
-                  className="text-sky-400 hover:text-sky-300 font-medium transition-colors"
+                  className="text-sky-400 hover:text-sky-300 font-medium transition-colors cursor-pointer"
                 >
                   {mode === 'signin' ? 'Sign up' : 'Sign in'}
                 </button>

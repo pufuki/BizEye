@@ -16,9 +16,9 @@ export default function ProfileSettings({ userInfo, initialTab = 'profile', onUp
   const [activeTab, setActiveTab] = useState<'profile' | 'settings' | 'security' | 'notifications'>(initialTab);
   
   // User profile state
-  const [name, setName] = useState(userInfo.username || 'User');
-  const [email, setEmail] = useState(userInfo.email || 'user@bizeye.com');
-  const [role, setRole] = useState(userInfo.role || 'Business Owner / Founder');
+  const [name, setName] = useState(userInfo.username || '');
+  const [email, setEmail] = useState(userInfo.email || '');
+  const [role, setRole] = useState(userInfo.role || 'Business Owner');
   const [company, setCompany] = useState(userInfo.company || 'D2C Brand Store');
   
   // Settings state
@@ -47,8 +47,8 @@ export default function ProfileSettings({ userInfo, initialTab = 'profile', onUp
   const [copiedKey, setCopiedKey] = useState(false);
 
   useEffect(() => {
-    setName(userInfo.username || 'User');
-    setEmail(userInfo.email || 'user@bizeye.com');
+    setName(userInfo.username || '');
+    setEmail(userInfo.email || '');
     if (userInfo.role) setRole(userInfo.role);
     if (userInfo.company) setCompany(userInfo.company);
   }, [userInfo]);
@@ -59,27 +59,32 @@ export default function ProfileSettings({ userInfo, initialTab = 'profile', onUp
     setErrorMsg('');
     setSavedSuccess(false);
 
+    const token = localStorage.getItem('auth_token');
+
     try {
       const res = await fetch('/api/auth/profile', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify({
-          originalEmail: userInfo.email,
           username: name.trim(),
           email: email.trim(),
+          role: role.trim(),
+          company: company.trim(),
         }),
       });
 
       const resData = await res.json();
 
       if (!res.ok || !resData.success) {
-        setErrorMsg(resData.detail || 'Failed to update profile.');
+        setErrorMsg(resData.detail || 'Failed to update profile in database.');
         setSaving(false);
         return;
       }
 
       if (resData.requiresVerification) {
-        // Email address changed, require verification OTP
         setPendingUpdateType('profile');
         setPendingEmail(resData.newEmail || email.trim());
         setPendingUsername(name.trim());
@@ -89,28 +94,14 @@ export default function ProfileSettings({ userInfo, initialTab = 'profile', onUp
         return;
       }
 
-      if (onUpdateUserInfo) {
-        onUpdateUserInfo({
-          username: name.trim(),
-          email: email.trim(),
-          role: role.trim(),
-          company: company.trim(),
-        });
+      if (onUpdateUserInfo && resData.user) {
+        onUpdateUserInfo(resData.user);
       }
 
       setSavedSuccess(true);
       setTimeout(() => setSavedSuccess(false), 3500);
     } catch (err) {
-      if (onUpdateUserInfo) {
-        onUpdateUserInfo({
-          username: name.trim(),
-          email: email.trim(),
-          role: role.trim(),
-          company: company.trim(),
-        });
-      }
-      setSavedSuccess(true);
-      setTimeout(() => setSavedSuccess(false), 3500);
+      setErrorMsg('Server connection error during profile save.');
     } finally {
       setSaving(false);
     }
@@ -135,13 +126,16 @@ export default function ProfileSettings({ userInfo, initialTab = 'profile', onUp
     }
 
     setSaving(true);
+    const token = localStorage.getItem('auth_token');
 
     try {
       const res = await fetch('/api/auth/change-password-request', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify({
-          email: userInfo.email,
           currentPassword,
           newPassword,
         }),
@@ -176,16 +170,21 @@ export default function ProfileSettings({ userInfo, initialTab = 'profile', onUp
     }
 
     setSaving(true);
+    const token = localStorage.getItem('auth_token');
 
     try {
       const res = await fetch('/api/auth/confirm-profile-update', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify({
-          originalEmail: userInfo.email,
           newEmail: pendingUpdateType === 'profile' ? pendingEmail : undefined,
           newUsername: pendingUpdateType === 'profile' ? pendingUsername : undefined,
           newPassword: pendingUpdateType === 'password' ? pendingNewPassword : undefined,
+          role: role.trim(),
+          company: company.trim(),
           code: verificationCode.trim(),
         }),
       });
@@ -198,20 +197,19 @@ export default function ProfileSettings({ userInfo, initialTab = 'profile', onUp
         return;
       }
 
+      if (resData.token) {
+        localStorage.setItem('auth_token', resData.token);
+      }
+
       setShowVerifyModal(false);
       setVerificationCode('');
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
 
-      const updatedUser: UserInfo = {
-        username: resData.user?.username || pendingUsername || name,
-        email: resData.user?.email || pendingEmail || email,
-        role: role.trim(),
-        company: company.trim(),
-      };
-
-      if (onUpdateUserInfo) onUpdateUserInfo(updatedUser);
+      if (onUpdateUserInfo && resData.user) {
+        onUpdateUserInfo(resData.user);
+      }
 
       setSavedSuccess(true);
       setTimeout(() => setSavedSuccess(false), 3500);
@@ -238,7 +236,7 @@ export default function ProfileSettings({ userInfo, initialTab = 'profile', onUp
           <div className="flex items-center gap-5">
             <div className="relative group cursor-pointer">
               <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-sky-400 to-blue-600 flex items-center justify-center text-black font-bold text-3xl shadow-xl shadow-sky-400/20">
-                {name.charAt(0).toUpperCase()}
+                {name ? name.charAt(0).toUpperCase() : 'U'}
               </div>
               <div className="absolute inset-0 bg-black/40 rounded-2xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                 <UserIcon className="w-5 h-5 text-white" />

@@ -1,11 +1,11 @@
 import random
-from fastapi import APIRouter, HTTPException, status, Depends
+from fastapi import APIRouter, HTTPException, status, Depends, Header
 from pydantic import BaseModel
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 from database import get_db
 import models
-from utils.security import hash_password, verify_password, create_access_token
+from utils.security import hash_password, verify_password, create_access_token, verify_access_token
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -22,23 +22,56 @@ class VerifyRequest(BaseModel):
 
 
 class ProfileUpdateRequest(BaseModel):
-    originalEmail: str | None = None
     username: str
     email: str
+    role: str | None = None
+    company: str | None = None
 
 
 class ConfirmProfileUpdateRequest(BaseModel):
-    originalEmail: str
     newEmail: str | None = None
     newUsername: str | None = None
     newPassword: str | None = None
+    role: str | None = None
+    company: str | None = None
     code: str
 
 
 class ChangePasswordRequest(BaseModel):
-    email: str
     currentPassword: str
     newPassword: str
+
+
+def get_current_user(authorization: str = Header(None), db: Session = Depends(get_db)) -> models.User:
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Authentication token missing or invalid")
+    
+    token = authorization.split(" ")[1]
+    payload = verify_access_token(token)
+    if not payload or "sub" not in payload:
+        raise HTTPException(status_code=401, detail="Session expired or token invalid. Please log in again.")
+    
+    user_email = payload["sub"]
+    user = db.query(models.User).filter(models.User.email == user_email).first()
+    if not user:
+        raise HTTPException(status_code=401, detail="User account not found")
+    
+    return user
+
+
+@router.get("/me")
+def get_me(user: models.User = Depends(get_current_user)):
+    return {
+        "success": True,
+        "user": {
+            "id": user.id,
+            "username": user.username,
+            "email": user.email,
+            "role": user.role or "Business Owner",
+            "company": user.company or "D2C Brand Store",
+            "is_verified": user.is_verified
+        }
+    }
 
 
 @router.post("/register")
@@ -49,7 +82,6 @@ def register(data: AuthRequest, db: Session = Depends(get_db)):
     user_identifier = data.username or (data.email.split('@')[0] if data.email else 'User')
     user_email = data.email or f"{user_identifier}@bizeye.local"
 
-    # Check if user already exists
     conditions = []
     if user_identifier:
         conditions.append(models.User.username == user_identifier)
@@ -80,7 +112,9 @@ def register(data: AuthRequest, db: Session = Depends(get_db)):
         email=user_email,
         password_hash=hash_password(data.password),
         is_verified=False,
-        verification_code=otp_code
+        verification_code=otp_code,
+        role="Business Owner",
+        company="D2C Brand Store"
     )
     db.add(user)
     db.commit()
@@ -103,17 +137,9 @@ def verify_email(data: VerifyRequest, db: Session = Depends(get_db)):
     if not user:
         raise HTTPException(status_code=404, detail="User account not found")
 
-    if user.is_verified:
-        token = create_access_token({"sub": user.email, "user_id": user.id})
-        return {
-            "success": True,
-            "message": "Email is already verified",
-            "user": {"id": user.id, "username": user.username, "email": user.email},
-            "token": token
-        }
-
     if not user.verification_code or user.verification_code.strip() != data.code.strip():
-        raise HTTPException(status_code=400, detail="Invalid verification code. Please check and try again.")
+        if not user.is_verified:
+            raise HTTPException(status_code=400, detail="Invalid verification code. Please check and try again.")
 
     user.is_verified = True
     user.verification_code = None
@@ -125,7 +151,13 @@ def verify_email(data: VerifyRequest, db: Session = Depends(get_db)):
     return {
         "success": True,
         "message": "Email verified successfully!",
-        "user": {"id": user.id, "username": user.username, "email": user.email},
+        "user": {
+            "id": user.id,
+            "username": user.username,
+            "email": user.email,
+            "role": user.role or "Business Owner",
+            "company": user.company or "D2C Brand Store"
+        },
         "token": token
     }
 
@@ -159,36 +191,24 @@ def login(data: AuthRequest, db: Session = Depends(get_db)):
 
     return {
         "success": True,
-        "user": {"id": user.id, "username": user.username, "email": user.email},
+        "user": {
+            "id": user.id,
+            "username": user.username,
+            "email": user.email,
+            "role": user.role or "Business Owner",
+            "company": user.company or "D2C Brand Store"
+        },
         "token": token
     }
 
 
 @router.put("/profile")
-def update_profile(data: ProfileUpdateRequest, db: Session = Depends(get_db)):
-    target_email = data.originalEmail or data.email
-    user = db.query(models.User).filter(
-        or_(models.User.email == target_email, models.User.username == data.username, models.User.email == data.email)
-    ).first()
-
-    if not user:
-        user = models.User(
-            username=data.username,
-            email=data.email,
-            password_hash=hash_password("default123"),
-            is_verified=True
-        )
-        db.add(user)
-        db.commit()
-        db.refresh(user)
-        return {
-            "success": True,
-            "requiresVerification": False,
-            "message": "Profile updated successfully",
-            "user": {"id": user.id, "username": user.username, "email": user.email}
-        }
-
-    # If email address is changed, require verification OTP
+def update_profile(
+    data: ProfileUpdateRequest,
+    db: Session = Depends(get_db),
+    user: models.User = Depends(get_current_user)
+):
+    # Check if email is changing
     if data.email.strip().lower() != user.email.strip().lower():
         otp_code = str(random.randint(100000, 999999))
         user.verification_code = otp_code
@@ -199,28 +219,39 @@ def update_profile(data: ProfileUpdateRequest, db: Session = Depends(get_db)):
             "newEmail": data.email.strip(),
             "newUsername": data.username.strip(),
             "verificationCode": otp_code,
-            "message": f"Verification code sent to {data.email}"
+            "message": f"Security verification code sent to {data.email}"
         }
 
     user.username = data.username.strip()
+    if data.role:
+        user.role = data.role.strip()
+    if data.company:
+        user.company = data.company.strip()
+
     db.commit()
     db.refresh(user)
 
     return {
         "success": True,
         "requiresVerification": False,
-        "message": "Profile updated successfully",
-        "user": {"id": user.id, "username": user.username, "email": user.email}
+        "message": "Profile updated in database successfully",
+        "user": {
+            "id": user.id,
+            "username": user.username,
+            "email": user.email,
+            "role": user.role,
+            "company": user.company
+        }
     }
 
 
 @router.post("/change-password-request")
-def change_password_request(data: ChangePasswordRequest, db: Session = Depends(get_db)):
-    user = db.query(models.User).filter(
-        or_(models.User.email == data.email.strip(), models.User.username == data.email.strip())
-    ).first()
-
-    if not user or not verify_password(data.currentPassword, user.password_hash):
+def change_password_request(
+    data: ChangePasswordRequest,
+    db: Session = Depends(get_db),
+    user: models.User = Depends(get_current_user)
+):
+    if not verify_password(data.currentPassword, user.password_hash):
         raise HTTPException(status_code=400, detail="Current password is incorrect")
 
     otp_code = str(random.randint(100000, 999999))
@@ -236,14 +267,11 @@ def change_password_request(data: ChangePasswordRequest, db: Session = Depends(g
 
 
 @router.post("/confirm-profile-update")
-def confirm_profile_update(data: ConfirmProfileUpdateRequest, db: Session = Depends(get_db)):
-    user = db.query(models.User).filter(
-        or_(models.User.email == data.originalEmail.strip(), models.User.username == data.originalEmail.strip())
-    ).first()
-
-    if not user:
-        raise HTTPException(status_code=404, detail="User account not found")
-
+def confirm_profile_update(
+    data: ConfirmProfileUpdateRequest,
+    db: Session = Depends(get_db),
+    user: models.User = Depends(get_current_user)
+):
     if not user.verification_code or user.verification_code.strip() != data.code.strip():
         raise HTTPException(status_code=400, detail="Invalid verification code. Please check and try again.")
 
@@ -253,14 +281,28 @@ def confirm_profile_update(data: ConfirmProfileUpdateRequest, db: Session = Depe
         user.username = data.newUsername.strip()
     if data.newPassword:
         user.password_hash = hash_password(data.newPassword)
+    if data.role:
+        user.role = data.role.strip()
+    if data.company:
+        user.company = data.company.strip()
 
     user.verification_code = None
     user.is_verified = True
     db.commit()
     db.refresh(user)
 
+    # Re-issue updated JWT token with new email if changed
+    token = create_access_token({"sub": user.email, "user_id": user.id})
+
     return {
         "success": True,
         "message": "Changes authorized and saved successfully!",
-        "user": {"id": user.id, "username": user.username, "email": user.email}
+        "user": {
+            "id": user.id,
+            "username": user.username,
+            "email": user.email,
+            "role": user.role,
+            "company": user.company
+        },
+        "token": token
     }
