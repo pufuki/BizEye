@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { Eye, ArrowLeft, ArrowRight, Mail, Lock, User, KeyRound, CheckCircle2 } from 'lucide-react';
 import Doodles from '@/components/Doodles';
+import { UserInfo } from '@/App';
 
 interface Props {
-  onLogin: (name: string) => void;
+  onLogin: (user: UserInfo) => void;
   onBack: () => void;
 }
 
@@ -94,7 +95,13 @@ export default function Login({ onLogin, onBack }: Props) {
         }
 
         const userDisplayName = resData.user?.username || name || email.split('@')[0];
-        onLogin(userDisplayName.charAt(0).toUpperCase() + userDisplayName.slice(1));
+        const userEmail = resData.user?.email || email;
+        onLogin({
+          username: userDisplayName.charAt(0).toUpperCase() + userDisplayName.slice(1),
+          email: userEmail,
+          role: 'Business Owner',
+          company: 'D2C Retail Store',
+        });
       } catch (err) {
         setError('Authentication server error. Please ensure the backend server is running.');
       } finally {
@@ -133,7 +140,13 @@ export default function Login({ onLogin, onBack }: Props) {
       setSuccessMsg('Account verified successfully! Logging you in...');
       setTimeout(() => {
         const userDisplayName = resData.user?.username || name || email.split('@')[0];
-        onLogin(userDisplayName.charAt(0).toUpperCase() + userDisplayName.slice(1));
+        const userEmail = resData.user?.email || email;
+        onLogin({
+          username: userDisplayName.charAt(0).toUpperCase() + userDisplayName.slice(1),
+          email: userEmail,
+          role: 'Business Owner',
+          company: 'D2C Retail Store',
+        });
       }, 1000);
     } catch (err) {
       setError('Verification error. Please ensure the backend server is running.');
